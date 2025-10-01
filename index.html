@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pregnancy Week & Day Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Tailwind gray-50 */
+        }
+        .calendar-grid {
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+        }
+        .day-cell {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Pregnancy Tracker</h1>
+                <p class="text-gray-500 mt-2">Track your pregnancy journey, one day at a time.</p>
+            </div>
+
+            <!-- Input Section -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                <label for="lmp-date" class="font-semibold text-lg text-gray-700">First Day of Last Period:</label>
+                <input type="date" id="lmp-date" class="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition">
+            </div>
+
+            <!-- Calendar Display -->
+            <div id="calendar-container" class="mt-6">
+                <div id="initial-message" class="text-center text-gray-500 p-8 border-2 border-dashed rounded-lg">
+                    <p>Please select a date to generate your pregnancy calendar.</p>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center mt-8 text-gray-500 text-sm">
+            <p>&copy; 2024 Pregnancy Tracker. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        const lmpDateInput = document.getElementById('lmp-date');
+        const calendarContainer = document.getElementById('calendar-container');
+        const initialMessage = document.getElementById('initial-message');
+
+        // Color palette for the weeks - This will be simplified
+        const weekColors = [
+            'bg-pink-100', 'bg-sky-100'
+        ];
+        
+        // Set default date and generate calendar on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            lmpDateInput.value = '2025-08-30';
+            // Programmatically trigger the change event to generate the calendar
+            const event = new Event('change');
+            lmpDateInput.dispatchEvent(event);
+        });
+
+        lmpDateInput.addEventListener('change', () => {
+            const lmpDateStr = lmpDateInput.value;
+            if (lmpDateStr) {
+                // The input gives a string like "YYYY-MM-DD". We need to add time to avoid timezone issues.
+                const lmpDate = new Date(lmpDateStr + 'T00:00:00');
+                generateCalendar(lmpDate);
+            }
+        });
+
+        function generateCalendar(lmpDate) {
+            // Clear previous calendar and message
+            calendarContainer.innerHTML = '';
+            if(initialMessage) initialMessage.style.display = 'none';
+
+            // Get today's date and normalize it to midnight for accurate comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Calculate Estimated Due Date (EDD) - 40 weeks (280 days) from LMP
+            const estimatedDueDate = new Date(lmpDate);
+            estimatedDueDate.setDate(estimatedDueDate.getDate() + 280);
+            estimatedDueDate.setHours(0, 0, 0, 0); // Normalize for accurate comparison
+
+            // Start rendering from the first day of the LMP month
+            let currentDate = new Date(lmpDate.getFullYear(), lmpDate.getMonth(), 1);
+            
+            // End rendering on the last day of the due date's month to show a full calendar view
+            const finalMonthEndDate = new Date(estimatedDueDate.getFullYear(), estimatedDueDate.getMonth() + 1, 0);
+
+            let currentMonth = -1;
+            let monthContainer;
+
+            while (currentDate <= finalMonthEndDate) {
+                const month = currentDate.getMonth();
+                const year = currentDate.getFullYear();
+                
+                if (month !== currentMonth) {
+                    // Finalize previous month's grid if it exists
+                    if (monthContainer) {
+                         monthContainer.innerHTML += '</div>'; // close calendar-grid
+                         calendarContainer.appendChild(monthContainer);
+                    }
+                    
+                    currentMonth = month;
+                    
+                    // Start new month container
+                    monthContainer = document.createElement('div');
+                    monthContainer.className = 'mb-12';
+
+                    const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    monthContainer.innerHTML = `
+                        <h2 class="text-xl font-bold text-center mb-4 text-pink-600">${monthName}</h2>
+                        <div class="grid calendar-grid gap-1 text-xs md:text-sm text-center font-semibold text-gray-600 mb-2">
+                            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+                        </div>
+                        <div class="grid calendar-grid gap-1 mt-4">
+                    `;
+
+                    // Add blank days for the first day of the month, starting on Monday
+                    const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
+                    for (let i = 0; i < firstDayOfMonth; i++) {
+                        monthContainer.querySelector('.calendar-grid:last-child').innerHTML += '<div></div>';
+                    }
+                }
+                
+                const dayOfMonth = currentDate.getDate();
+                const isToday = currentDate.getTime() === today.getTime();
+                const isDueDate = currentDate.getTime() === estimatedDueDate.getTime();
+
+                // Check if the date is within the pregnancy tracking period (up to and including the due date)
+                if (currentDate >= lmpDate && currentDate <= estimatedDueDate) {
+                    const timeDiff = currentDate.getTime() - lmpDate.getTime();
+                    const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+                    
+                    const completedWeeks = Math.floor(dayDiff / 7);
+                    const daysIntoWeek = dayDiff % 7;
+
+                    let todayClass = isToday ? 'ring-2 ring-pink-500 ring-offset-1 is-today' : '';
+                    let weekColor = weekColors[completedWeeks % 2];
+                    let weekStartLabel = '';
+                    let dueDateContent = '';
+
+                    // Special styling for the due date
+                    if (isDueDate) {
+                        weekColor = 'bg-pink-500 text-white';
+                        todayClass = 'ring-4 ring-pink-300 ring-offset-1'; // More prominent ring
+                        if(isToday) todayClass += ' is-today';
+                        dueDateContent = '<span class="absolute bottom-1 text-lg">🎉</span>';
+                    } else if (daysIntoWeek === 0) {
+                        const labelColorClass = completedWeeks % 2 === 0 ? 'text-pink-600' : 'text-sky-600';
+                        weekStartLabel = `<div class="absolute top-1 left-1.5 ${labelColorClass} text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
+                    }
+
+                    const dayCellHTML = `
+                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass}">
+                            ${weekStartLabel}
+                            <span class="text-base font-semibold">${dayOfMonth}</span>
+                            <span class="text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'}">${!isDueDate ? `${completedWeeks}w ${daysIntoWeek}d` : ''}</span>
+                            ${dueDateContent}
+                        </div>
+                    `;
+                    monthContainer.querySelector('.calendar-grid:last-child').innerHTML += dayCellHTML;
+                } else {
+                    // This day is outside the pregnancy tracking period, so render a grayed-out cell
+                    const todayClass = isToday ? 'ring-2 ring-gray-400 ring-offset-1 is-today' : '';
+                    const dayCellHTML = `
+                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg bg-gray-50 text-gray-400 ${todayClass}">
+                            <span class="text-base font-semibold">${dayOfMonth}</span>
+                        </div>
+                    `;
+                    monthContainer.querySelector('.calendar-grid:last-child').innerHTML += dayCellHTML;
+                }
+
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+             // Append the last month's grid
+            if (monthContainer) {
+                monthContainer.innerHTML += '</div>'; // close calendar-grid
+                calendarContainer.appendChild(monthContainer);
+            }
+
+            // Scroll to today's date so it's in the middle of the view
+            const todayElement = calendarContainer.querySelector('.is-today');
+            if (todayElement) {
+                // Use a small timeout to ensure the browser has rendered the new elements
+                // before we try to scroll to one of them. This prevents overscrolling.
+                setTimeout(() => {
+                    todayElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }, 100); // 100ms delay is usually enough time for rendering
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
