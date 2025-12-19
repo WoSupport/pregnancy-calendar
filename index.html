@@ -55,6 +55,11 @@
         const weekColors = [
             'bg-pink-100', 'bg-sky-100'
         ];
+
+        // OB Visit Dates
+        const obVisitDates = new Set([
+            '2026-01-16', '2026-02-02', '2026-03-02', '2026-03-30', '2026-04-21'
+        ].map(d => new Date(d + 'T00:00:00').getTime()));
         
         // Set default date and generate calendar on page load
         window.addEventListener('DOMContentLoaded', () => {
@@ -132,6 +137,7 @@
                 const dayOfMonth = currentDate.getDate();
                 const isToday = currentDate.getTime() === today.getTime();
                 const isDueDate = currentDate.getTime() === estimatedDueDate.getTime();
+                const isObVisit = obVisitDates.has(currentDate.getTime());
 
                 // Check if the date is within the pregnancy tracking period (up to and including the due date)
                 if (currentDate >= lmpDate && currentDate <= estimatedDueDate) {
@@ -141,10 +147,11 @@
                     const completedWeeks = Math.floor(dayDiff / 7);
                     const daysIntoWeek = dayDiff % 7;
 
-                    let todayClass = isToday ? 'ring-2 ring-pink-500 ring-offset-1 is-today' : '';
+                    let todayClass = isToday ? 'ring-4 ring-pink-500 ring-offset-2 z-10 is-today' : '';
                     let weekColor = weekColors[completedWeeks % 2];
                     let weekStartLabel = '';
                     let dueDateContent = '';
+                    let obVisitBadge = '';
 
                     // Special styling for the due date
                     if (isDueDate) {
@@ -152,14 +159,25 @@
                         todayClass = 'ring-4 ring-pink-300 ring-offset-1'; // More prominent ring
                         if(isToday) todayClass += ' is-today';
                         dueDateContent = '<span class="absolute bottom-1 text-lg">🎉</span>';
-                    } else if (daysIntoWeek === 0) {
-                        const labelColorClass = completedWeeks % 2 === 0 ? 'text-pink-600' : 'text-sky-600';
-                        weekStartLabel = `<div class="absolute top-1 left-1.5 ${labelColorClass} text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
+                    } else {
+                        // Regular day logic
+                        if (daysIntoWeek === 0) {
+                            const labelColorClass = completedWeeks % 2 === 0 ? 'text-pink-600' : 'text-sky-600';
+                            weekStartLabel = `<div class="absolute top-1 left-1.5 ${labelColorClass} text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
+                        }
+                        
+                        // OB Visit Logic
+                        if (isObVisit) {
+                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">OB</div>`;
+                            // Make the cell distinct and prominent
+                            todayClass += ' ring-4 ring-purple-600 ring-offset-2 z-10';
+                        }
                     }
 
                     const dayCellHTML = `
                         <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass}">
                             ${weekStartLabel}
+                            ${obVisitBadge}
                             <span class="text-base font-semibold">${dayOfMonth}</span>
                             <span class="text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'}">${!isDueDate ? `${completedWeeks}w ${daysIntoWeek}d` : ''}</span>
                             ${dueDateContent}
