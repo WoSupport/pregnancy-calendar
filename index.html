@@ -46,10 +46,14 @@
             'bg-pink-100', 'bg-sky-100'
         ];
 
-        // OB Visit Dates
-        const obVisitDates = new Set([
-            '2026-01-16', '2026-02-02', '2026-03-02', '2026-03-30', '2026-04-21'
-        ].map(d => new Date(d + 'T00:00:00').getTime()));
+        // OB Visit Dates - Key: Timestamp, Value: Custom Label (optional)
+        const obVisitDates = new Map([
+            ['2026-01-16', '大排畸'],
+            ['2026-02-02', null],
+            ['2026-03-02', '糖耐?'],
+            ['2026-03-30', null],
+            ['2026-04-21', null]
+        ].map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label]));
         
         // Hardcoded LMP Date
         const LMP_DATE = new Date('2025-08-30T00:00:00');
@@ -117,7 +121,8 @@
                 const dayOfMonth = currentDate.getDate();
                 const isToday = currentDate.getTime() === today.getTime();
                 const isDueDate = currentDate.getTime() === estimatedDueDate.getTime();
-                const isObVisit = obVisitDates.has(currentDate.getTime());
+                const obVisitLabel = obVisitDates.get(currentDate.getTime());
+                const isObVisit = obVisitLabel !== undefined;
 
                 // Check if the date is within the pregnancy tracking period (up to and including the due date)
                 if (currentDate >= lmpDate && currentDate <= estimatedDueDate) {
@@ -148,18 +153,19 @@
                         
                         // OB Visit Logic
                         if (isObVisit) {
-                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[9px] md:text-[11px] font-bold px-1 md:px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">OB</div>`;
+                            const badgeText = obVisitLabel || 'OB';
+                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[9px] md:text-[11px] font-bold px-1 md:px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">${badgeText}</div>`;
                             // Make the cell distinct and prominent
                             todayClass += ' ring-4 ring-purple-600 ring-offset-2 z-10';
                         }
                     }
 
                     const dayCellHTML = `
-                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass}">
+                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass} pt-3 md:pt-4">
                             ${weekStartLabel}
                             ${obVisitBadge}
-                            <span class="text-sm md:text-base font-semibold">${dayOfMonth}</span>
-                            <span class="text-[10px] md:text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'} whitespace-nowrap">${!isDueDate ? `${completedWeeks}w${daysIntoWeek}d` : ''}</span>
+                            <span class="text-sm md:text-base font-semibold leading-tight">${dayOfMonth}</span>
+                            <span class="text-[10px] md:text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'} whitespace-nowrap leading-none mt-0.5">${!isDueDate ? `${completedWeeks}w${daysIntoWeek}d` : ''}</span>
                             ${dueDateContent}
                         </div>
                     `;
