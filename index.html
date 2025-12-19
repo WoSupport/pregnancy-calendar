@@ -28,17 +28,9 @@
                 <p class="text-gray-500 mt-2">Track your pregnancy journey, one day at a time.</p>
             </div>
 
-            <!-- Input Section -->
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-                <label for="lmp-date" class="font-semibold text-lg text-gray-700">First Day of Last Period:</label>
-                <input type="date" id="lmp-date" class="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-pink-400 focus:border-pink-400 transition">
-            </div>
-
             <!-- Calendar Display -->
             <div id="calendar-container" class="mt-6">
-                <div id="initial-message" class="text-center text-gray-500 p-8 border-2 border-dashed rounded-lg">
-                    <p>Please select a date to generate your pregnancy calendar.</p>
-                </div>
+                <!-- Calendar will be injected here -->
             </div>
         </div>
         <footer class="text-center mt-8 text-gray-500 text-sm">
@@ -47,9 +39,7 @@
     </div>
 
     <script>
-        const lmpDateInput = document.getElementById('lmp-date');
         const calendarContainer = document.getElementById('calendar-container');
-        const initialMessage = document.getElementById('initial-message');
 
         // Color palette for the weeks - This will be simplified
         const weekColors = [
@@ -61,27 +51,17 @@
             '2026-01-16', '2026-02-02', '2026-03-02', '2026-03-30', '2026-04-21'
         ].map(d => new Date(d + 'T00:00:00').getTime()));
         
-        // Set default date and generate calendar on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            lmpDateInput.value = '2025-08-30';
-            // Programmatically trigger the change event to generate the calendar
-            const event = new Event('change');
-            lmpDateInput.dispatchEvent(event);
-        });
+        // Hardcoded LMP Date
+        const LMP_DATE = new Date('2025-08-30T00:00:00');
 
-        lmpDateInput.addEventListener('change', () => {
-            const lmpDateStr = lmpDateInput.value;
-            if (lmpDateStr) {
-                // The input gives a string like "YYYY-MM-DD". We need to add time to avoid timezone issues.
-                const lmpDate = new Date(lmpDateStr + 'T00:00:00');
-                generateCalendar(lmpDate);
-            }
+        // Generate calendar on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            generateCalendar(LMP_DATE);
         });
 
         function generateCalendar(lmpDate) {
-            // Clear previous calendar and message
+            // Clear previous calendar
             calendarContainer.innerHTML = '';
-            if(initialMessage) initialMessage.style.display = 'none';
 
             // Get today's date and normalize it to midnight for accurate comparison
             const today = new Date();
@@ -163,12 +143,12 @@
                         // Regular day logic
                         if (daysIntoWeek === 0) {
                             const labelColorClass = completedWeeks % 2 === 0 ? 'text-pink-600' : 'text-sky-600';
-                            weekStartLabel = `<div class="absolute top-1 left-1.5 ${labelColorClass} text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
+                            weekStartLabel = `<div class="absolute top-0.5 left-0.5 ${labelColorClass} text-[8px] md:text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
                         }
                         
                         // OB Visit Logic
                         if (isObVisit) {
-                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">OB</div>`;
+                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[9px] md:text-[11px] font-bold px-1 md:px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">OB</div>`;
                             // Make the cell distinct and prominent
                             todayClass += ' ring-4 ring-purple-600 ring-offset-2 z-10';
                         }
@@ -178,8 +158,8 @@
                         <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass}">
                             ${weekStartLabel}
                             ${obVisitBadge}
-                            <span class="text-base font-semibold">${dayOfMonth}</span>
-                            <span class="text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'}">${!isDueDate ? `${completedWeeks}w ${daysIntoWeek}d` : ''}</span>
+                            <span class="text-sm md:text-base font-semibold">${dayOfMonth}</span>
+                            <span class="text-[10px] md:text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'} whitespace-nowrap">${!isDueDate ? `${completedWeeks}w${daysIntoWeek}d` : ''}</span>
                             ${dueDateContent}
                         </div>
                     `;
