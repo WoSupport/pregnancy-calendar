@@ -46,22 +46,108 @@
             'bg-pink-100', 'bg-sky-100'
         ];
 
-        // OB Visit Dates - Key: Timestamp, Value: Custom Label (optional)
-        const obVisitDates = new Map([
-            ['2026-01-16', '大排畸'],
-            ['2026-02-02', null],
-            ['2026-03-02', '糖耐?'],
-            ['2026-03-30', null],
-            ['2026-04-21', null]
-        ].map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label]));
+        // Storage Key
+        const STORAGE_KEY = 'pregnancy_calendar_appointments';
         
+        // OB Visit Dates - Key: Timestamp, Value: Custom Label (optional)
+        let obVisitDates = new Map();
+
         // Hardcoded LMP Date
         const LMP_DATE = new Date('2025-08-30T00:00:00');
 
+        function loadAppointments() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    obVisitDates = new Map(JSON.parse(stored));
+                } catch (e) {
+                    console.error('Failed to parse appointments', e);
+                    obVisitDates = new Map();
+                }
+            } else {
+                // Initialize with default data if empty
+                 const defaults = [
+                    ['2026-01-16', '大排畸'],
+                    ['2026-02-02', 'OB'],
+                    ['2026-03-02', '糖耐?'],
+                    ['2026-03-30', 'OB'],
+                    ['2026-04-21', 'OB']
+                ].map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label]);
+                obVisitDates = new Map(defaults);
+                saveAppointments();
+            }
+        }
+
+        function saveAppointments() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(obVisitDates.entries())));
+        }
+
+        function editAppointment(timestamp) {
+            const currentLabel = obVisitDates.get(timestamp);
+            const defaultValue = currentLabel || '';
+            
+            // Short delay to avoid prompt blocking event loop too early if triggered via touch
+            setTimeout(() => {
+                const newLabel = prompt("Enter appointment note (leave empty to delete):", defaultValue);
+                
+                if (newLabel === null) return; // Cancelled
+                
+                if (newLabel.trim() === '') {
+                    obVisitDates.delete(timestamp);
+                } else {
+                    obVisitDates.set(timestamp, newLabel.trim());
+                }
+                
+                saveAppointments();
+                generateCalendar(LMP_DATE);
+            }, 10);
+        }
+
         // Generate calendar on page load
         window.addEventListener('DOMContentLoaded', () => {
+            loadAppointments();
             generateCalendar(LMP_DATE);
         });
+
+        // Long Press Interaction
+        let longPressTimer;
+        let isLongPress = false;
+        const LONG_PRESS_DURATION = 500; // ms
+
+        function handlePressStart(e) {
+            const cell = e.target.closest('.day-cell');
+            if (!cell || !cell.dataset.timestamp) return;
+
+            isLongPress = false;
+            longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                const ts = parseInt(cell.dataset.timestamp);
+                editAppointment(ts);
+            }, LONG_PRESS_DURATION);
+        }
+
+        function handlePressEnd(e) {
+            clearTimeout(longPressTimer);
+        }
+        
+        function handleCancel(e) {
+             clearTimeout(longPressTimer);
+        }
+
+        // Add listeners to container (delegation)
+        calendarContainer.addEventListener('mousedown', handlePressStart);
+        calendarContainer.addEventListener('touchstart', handlePressStart, {passive: true});
+        
+        calendarContainer.addEventListener('mouseup', handlePressEnd);
+        calendarContainer.addEventListener('touchend', handlePressEnd);
+        
+        calendarContainer.addEventListener('mousemove', handleCancel);
+        calendarContainer.addEventListener('touchmove', handleCancel);
+        calendarContainer.addEventListener('contextmenu', (e) => {
+             // Prevent default context menu if it was a long press on a cell
+             if(isLongPress) e.preventDefault();
+        });
+
 
         function generateCalendar(lmpDate) {
             // Clear previous calendar
@@ -119,14 +205,15 @@
                 }
                 
                 const dayOfMonth = currentDate.getDate();
-                const isToday = currentDate.getTime() === today.getTime();
-                const isDueDate = currentDate.getTime() === estimatedDueDate.getTime();
-                const obVisitLabel = obVisitDates.get(currentDate.getTime());
+                const currentTs = currentDate.getTime();
+                const isToday = currentTs === today.getTime();
+                const isDueDate = currentTs === estimatedDueDate.getTime();
+                const obVisitLabel = obVisitDates.get(currentTs);
                 const isObVisit = obVisitLabel !== undefined;
 
                 // Check if the date is within the pregnancy tracking period (up to and including the due date)
                 if (currentDate >= lmpDate && currentDate <= estimatedDueDate) {
-                    const timeDiff = currentDate.getTime() - lmpDate.getTime();
+                    const timeDiff = currentTs - lmpDate.getTime();
                     const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
                     
                     const completedWeeks = Math.floor(dayDiff / 7);
@@ -161,7 +248,7 @@
                     }
 
                     const dayCellHTML = `
-                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass} pt-3 md:pt-4">
+                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass} pt-3 md:pt-4" data-timestamp="${currentTs}">
                             ${weekStartLabel}
                             ${obVisitBadge}
                             <span class="text-sm md:text-base font-semibold leading-tight">${dayOfMonth}</span>
@@ -174,7 +261,7 @@
                     // This day is outside the pregnancy tracking period, so render a grayed-out cell
                     const todayClass = isToday ? 'ring-2 ring-gray-400 ring-offset-1 is-today' : '';
                     const dayCellHTML = `
-                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg bg-gray-50 text-gray-400 ${todayClass}">
+                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg bg-gray-50 text-gray-400 ${todayClass}" data-timestamp="${currentTs}">
                             <span class="text-base font-semibold">${dayOfMonth}</span>
                         </div>
                     `;
