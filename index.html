@@ -9,7 +9,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* Tailwind gray-50 */
+            background-color: #f8fafc;
         }
         .calendar-grid {
             grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -28,10 +28,7 @@
                 <p class="text-gray-500 mt-2">Track your pregnancy journey, one day at a time.</p>
             </div>
 
-            <!-- Calendar Display -->
-            <div id="calendar-container" class="mt-6">
-                <!-- Calendar will be injected here -->
-            </div>
+            <div id="calendar-container" class="mt-6"></div>
         </div>
         <footer class="text-center mt-8 text-gray-500 text-sm">
             <p>&copy; 2024 Pregnancy Tracker. All Rights Reserved.</p>
@@ -40,14 +37,9 @@
 
     <script>
         const calendarContainer = document.getElementById('calendar-container');
-
-        // Color palette for the weeks
-        const weekColors = [
-            'bg-pink-100', 'bg-sky-100'
-        ];
+        const weekColors = ['bg-pink-100', 'bg-sky-100'];
 
         // --- HARDCODED APPOINTMENTS ---
-        // To update appointments, simply edit this list and push to GitHub.
         const APPOINTMENTS = [
             ['2026-01-16', '大排畸'],
             ['2026-02-02', 'OB'],
@@ -56,22 +48,17 @@
             ['2026-04-21', 'OB']
         ];
 
-        // Hardcoded LMP Date
         const LMP_DATE = new Date('2025-08-30T00:00:00');
-
-        // Convert hardcoded list to a Map for easy lookup
         const obVisitDates = new Map(
             APPOINTMENTS.map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label])
         );
 
-        // Generate calendar on page load
         window.addEventListener('DOMContentLoaded', () => {
             generateCalendar(LMP_DATE);
         });
 
         function generateCalendar(lmpDate) {
             calendarContainer.innerHTML = '';
-
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -91,39 +78,32 @@
                 
                 if (month !== currentMonth) {
                     if (monthContainer) {
-                         monthContainer.innerHTML += '</div>';
                          calendarContainer.appendChild(monthContainer);
                     }
-                    
                     currentMonth = month;
                     monthContainer = document.createElement('div');
                     monthContainer.className = 'mb-12';
-
                     const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
                     monthContainer.innerHTML = `
                         <h2 class="text-xl font-bold text-center mb-4 text-pink-600">${monthName}</h2>
                         <div class="grid calendar-grid gap-1 text-xs md:text-sm text-center font-semibold text-gray-600 mb-2">
                             <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
                         </div>
-                        <div class="grid calendar-grid gap-1 mt-4">
+                        <div class="grid calendar-grid gap-1 mt-4"></div>
                     `;
-
                     const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
                     for (let i = 0; i < firstDayOfMonth; i++) {
-                        monthContainer.querySelector('.calendar-grid:last-child').innerHTML += '<div></div>';
+                        monthContainer.querySelector('.calendar-grid:last-child').appendChild(document.createElement('div'));
                     }
                 }
                 
-                const dayOfMonth = currentDate.getDate();
                 const currentTs = currentDate.getTime();
                 const isToday = currentTs === today.getTime();
                 const isDueDate = currentTs === estimatedDueDate.getTime();
                 const obVisitLabel = obVisitDates.get(currentTs);
-                const isObVisit = obVisitLabel !== undefined;
 
                 if (currentDate >= lmpDate && currentDate <= estimatedDueDate) {
-                    const timeDiff = currentTs - lmpDate.getTime();
-                    const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+                    const dayDiff = Math.floor((currentTs - lmpDate.getTime()) / (1000 * 3600 * 24));
                     const completedWeeks = Math.floor(dayDiff / 7);
                     const daysIntoWeek = dayDiff % 7;
 
@@ -136,53 +116,41 @@
                     if (isDueDate) {
                         weekColor = 'bg-pink-500 text-white';
                         todayClass = 'ring-4 ring-pink-300 ring-offset-1';
-                        if(isToday) todayClass += ' is-today';
                         dueDateContent = '<span class="absolute bottom-1 text-lg">🎉</span>';
                     } else {
                         if (daysIntoWeek === 0) {
                             const labelColorClass = completedWeeks % 2 === 0 ? 'text-pink-600' : 'text-sky-600';
                             weekStartLabel = `<div class="absolute top-0.5 left-0.5 ${labelColorClass} text-[8px] md:text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
                         }
-                        
-                        if (isObVisit) {
-                            const badgeText = obVisitLabel || 'OB';
-                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[9px] md:text-[11px] font-bold px-1 md:px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">${badgeText}</div>`;
+                        if (obVisitLabel) {
+                            obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[9px] md:text-[11px] font-bold px-1 md:px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">${obVisitLabel}</div>`;
                             todayClass += ' ring-4 ring-purple-600 ring-offset-2 z-10';
                         }
                     }
 
-                    const dayCellHTML = `
-                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass} pt-3 md:pt-4" data-timestamp="${currentTs}">
-                            ${weekStartLabel}
-                            ${obVisitBadge}
-                            <span class="text-sm md:text-base font-semibold leading-tight">${dayOfMonth}</span>
-                            <span class="text-[10px] md:text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'} whitespace-nowrap leading-none mt-0.5">${!isDueDate ? `${completedWeeks}w${daysIntoWeek}d` : ''}</span>
-                            ${dueDateContent}
-                        </div>
+                    const dayCell = document.createElement('div');
+                    dayCell.className = `relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg ${weekColor} ${todayClass} pt-3 md:pt-4`;
+                    dayCell.innerHTML = `
+                        ${weekStartLabel}${obVisitBadge}
+                        <span class="text-sm md:text-base font-semibold leading-tight">${currentDate.getDate()}</span>
+                        <span class="text-[10px] md:text-xs ${isDueDate ? 'text-pink-100' : 'text-gray-600'} whitespace-nowrap leading-none mt-0.5">${!isDueDate ? `${completedWeeks}w${daysIntoWeek}d` : ''}</span>
+                        ${dueDateContent}
                     `;
-                    monthContainer.querySelector('.calendar-grid:last-child').innerHTML += dayCellHTML;
+                    monthContainer.querySelector('.calendar-grid:last-child').appendChild(dayCell);
                 } else {
                     const todayClass = isToday ? 'ring-2 ring-gray-400 ring-offset-1 is-today' : '';
-                    const dayCellHTML = `
-                        <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg bg-gray-50 text-gray-400 ${todayClass}" data-timestamp="${currentTs}">
-                            <span class="text-base font-semibold">${dayOfMonth}</span>
-                        </div>
-                    `;
-                    monthContainer.querySelector('.calendar-grid:last-child').innerHTML += dayCellHTML;
+                    const dayCell = document.createElement('div');
+                    dayCell.className = `relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg bg-gray-50 text-gray-400 ${todayClass}`;
+                    dayCell.innerHTML = `<span class="text-base font-semibold">${currentDate.getDate()}</span>`;
+                    monthContainer.querySelector('.calendar-grid:last-child').appendChild(dayCell);
                 }
-
                 currentDate.setDate(currentDate.getDate() + 1);
             }
-            if (monthContainer) {
-                monthContainer.innerHTML += '</div>';
-                calendarContainer.appendChild(monthContainer);
-            }
+            if (monthContainer) calendarContainer.appendChild(monthContainer);
 
             const todayElement = calendarContainer.querySelector('.is-today');
             if (todayElement) {
-                setTimeout(() => {
-                    todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 100);
+                setTimeout(() => { todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
             }
         }
     </script>
