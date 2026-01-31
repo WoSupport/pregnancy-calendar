@@ -41,131 +41,45 @@
     <script>
         const calendarContainer = document.getElementById('calendar-container');
 
-        // Color palette for the weeks - This will be simplified
+        // Color palette for the weeks
         const weekColors = [
             'bg-pink-100', 'bg-sky-100'
         ];
 
-        // Storage Key
-        const STORAGE_KEY = 'pregnancy_calendar_appointments';
-        
-        // OB Visit Dates - Key: Timestamp, Value: Custom Label (optional)
-        let obVisitDates = new Map();
+        // --- HARDCODED APPOINTMENTS ---
+        // To update appointments, simply edit this list and push to GitHub.
+        const APPOINTMENTS = [
+            ['2026-01-16', '大排畸'],
+            ['2026-02-02', 'OB'],
+            ['2026-03-02', '糖耐?'],
+            ['2026-03-30', 'OB'],
+            ['2026-04-21', 'OB']
+        ];
 
         // Hardcoded LMP Date
         const LMP_DATE = new Date('2025-08-30T00:00:00');
 
-        function loadAppointments() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                try {
-                    obVisitDates = new Map(JSON.parse(stored));
-                } catch (e) {
-                    console.error('Failed to parse appointments', e);
-                    obVisitDates = new Map();
-                }
-            } else {
-                // Initialize with default data if empty
-                 const defaults = [
-                    ['2026-01-16', '大排畸'],
-                    ['2026-02-02', 'OB'],
-                    ['2026-03-02', '糖耐?'],
-                    ['2026-03-30', 'OB'],
-                    ['2026-04-21', 'OB']
-                ].map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label]);
-                obVisitDates = new Map(defaults);
-                saveAppointments();
-            }
-        }
-
-        function saveAppointments() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(obVisitDates.entries())));
-        }
-
-        function editAppointment(timestamp) {
-            const currentLabel = obVisitDates.get(timestamp);
-            const defaultValue = currentLabel || '';
-            
-            // Short delay to avoid prompt blocking event loop too early if triggered via touch
-            setTimeout(() => {
-                const newLabel = prompt("Enter appointment note (leave empty to delete):", defaultValue);
-                
-                if (newLabel === null) return; // Cancelled
-                
-                if (newLabel.trim() === '') {
-                    obVisitDates.delete(timestamp);
-                } else {
-                    obVisitDates.set(timestamp, newLabel.trim());
-                }
-                
-                saveAppointments();
-                generateCalendar(LMP_DATE);
-            }, 10);
-        }
+        // Convert hardcoded list to a Map for easy lookup
+        const obVisitDates = new Map(
+            APPOINTMENTS.map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label])
+        );
 
         // Generate calendar on page load
         window.addEventListener('DOMContentLoaded', () => {
-            loadAppointments();
             generateCalendar(LMP_DATE);
         });
 
-        // Long Press Interaction
-        let longPressTimer;
-        let isLongPress = false;
-        const LONG_PRESS_DURATION = 500; // ms
-
-        function handlePressStart(e) {
-            const cell = e.target.closest('.day-cell');
-            if (!cell || !cell.dataset.timestamp) return;
-
-            isLongPress = false;
-            longPressTimer = setTimeout(() => {
-                isLongPress = true;
-                const ts = parseInt(cell.dataset.timestamp);
-                editAppointment(ts);
-            }, LONG_PRESS_DURATION);
-        }
-
-        function handlePressEnd(e) {
-            clearTimeout(longPressTimer);
-        }
-        
-        function handleCancel(e) {
-             clearTimeout(longPressTimer);
-        }
-
-        // Add listeners to container (delegation)
-        calendarContainer.addEventListener('mousedown', handlePressStart);
-        calendarContainer.addEventListener('touchstart', handlePressStart, {passive: true});
-        
-        calendarContainer.addEventListener('mouseup', handlePressEnd);
-        calendarContainer.addEventListener('touchend', handlePressEnd);
-        
-        calendarContainer.addEventListener('mousemove', handleCancel);
-        calendarContainer.addEventListener('touchmove', handleCancel);
-        calendarContainer.addEventListener('contextmenu', (e) => {
-             // Prevent default context menu if it was a long press on a cell
-             if(isLongPress) e.preventDefault();
-        });
-
-
         function generateCalendar(lmpDate) {
-            // Clear previous calendar
             calendarContainer.innerHTML = '';
 
-            // Get today's date and normalize it to midnight for accurate comparison
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // Calculate Estimated Due Date (EDD) - 40 weeks (280 days) from LMP
             const estimatedDueDate = new Date(lmpDate);
             estimatedDueDate.setDate(estimatedDueDate.getDate() + 280);
-            estimatedDueDate.setHours(0, 0, 0, 0); // Normalize for accurate comparison
+            estimatedDueDate.setHours(0, 0, 0, 0);
 
-            // Start rendering from the first day of the LMP month
             let currentDate = new Date(lmpDate.getFullYear(), lmpDate.getMonth(), 1);
-            
-            // End rendering on the last day of the due date's month to show a full calendar view
             const finalMonthEndDate = new Date(estimatedDueDate.getFullYear(), estimatedDueDate.getMonth() + 1, 0);
 
             let currentMonth = -1;
@@ -176,15 +90,12 @@
                 const year = currentDate.getFullYear();
                 
                 if (month !== currentMonth) {
-                    // Finalize previous month's grid if it exists
                     if (monthContainer) {
-                         monthContainer.innerHTML += '</div>'; // close calendar-grid
+                         monthContainer.innerHTML += '</div>';
                          calendarContainer.appendChild(monthContainer);
                     }
                     
                     currentMonth = month;
-                    
-                    // Start new month container
                     monthContainer = document.createElement('div');
                     monthContainer.className = 'mb-12';
 
@@ -197,7 +108,6 @@
                         <div class="grid calendar-grid gap-1 mt-4">
                     `;
 
-                    // Add blank days for the first day of the month, starting on Monday
                     const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
                     for (let i = 0; i < firstDayOfMonth; i++) {
                         monthContainer.querySelector('.calendar-grid:last-child').innerHTML += '<div></div>';
@@ -211,11 +121,9 @@
                 const obVisitLabel = obVisitDates.get(currentTs);
                 const isObVisit = obVisitLabel !== undefined;
 
-                // Check if the date is within the pregnancy tracking period (up to and including the due date)
                 if (currentDate >= lmpDate && currentDate <= estimatedDueDate) {
                     const timeDiff = currentTs - lmpDate.getTime();
                     const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
-                    
                     const completedWeeks = Math.floor(dayDiff / 7);
                     const daysIntoWeek = dayDiff % 7;
 
@@ -225,24 +133,20 @@
                     let dueDateContent = '';
                     let obVisitBadge = '';
 
-                    // Special styling for the due date
                     if (isDueDate) {
                         weekColor = 'bg-pink-500 text-white';
-                        todayClass = 'ring-4 ring-pink-300 ring-offset-1'; // More prominent ring
+                        todayClass = 'ring-4 ring-pink-300 ring-offset-1';
                         if(isToday) todayClass += ' is-today';
                         dueDateContent = '<span class="absolute bottom-1 text-lg">🎉</span>';
                     } else {
-                        // Regular day logic
                         if (daysIntoWeek === 0) {
                             const labelColorClass = completedWeeks % 2 === 0 ? 'text-pink-600' : 'text-sky-600';
                             weekStartLabel = `<div class="absolute top-0.5 left-0.5 ${labelColorClass} text-[8px] md:text-[10px] font-bold">Wk ${completedWeeks + 1}</div>`;
                         }
                         
-                        // OB Visit Logic
                         if (isObVisit) {
                             const badgeText = obVisitLabel || 'OB';
                             obVisitBadge = `<div class="absolute top-0 right-0 bg-purple-700 text-white text-[9px] md:text-[11px] font-bold px-1 md:px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg shadow-md">${badgeText}</div>`;
-                            // Make the cell distinct and prominent
                             todayClass += ' ring-4 ring-purple-600 ring-offset-2 z-10';
                         }
                     }
@@ -258,7 +162,6 @@
                     `;
                     monthContainer.querySelector('.calendar-grid:last-child').innerHTML += dayCellHTML;
                 } else {
-                    // This day is outside the pregnancy tracking period, so render a grayed-out cell
                     const todayClass = isToday ? 'ring-2 ring-gray-400 ring-offset-1 is-today' : '';
                     const dayCellHTML = `
                         <div class="relative day-cell flex flex-col items-center justify-center h-14 md:h-16 rounded-lg bg-gray-50 text-gray-400 ${todayClass}" data-timestamp="${currentTs}">
@@ -270,30 +173,18 @@
 
                 currentDate.setDate(currentDate.getDate() + 1);
             }
-             // Append the last month's grid
             if (monthContainer) {
-                monthContainer.innerHTML += '</div>'; // close calendar-grid
+                monthContainer.innerHTML += '</div>';
                 calendarContainer.appendChild(monthContainer);
             }
 
-            // Scroll to today's date so it's in the middle of the view
             const todayElement = calendarContainer.querySelector('.is-today');
             if (todayElement) {
-                // Use a small timeout to ensure the browser has rendered the new elements
-                // before we try to scroll to one of them. This prevents overscrolling.
                 setTimeout(() => {
-                    todayElement.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                }, 100); // 100ms delay is usually enough time for rendering
+                    todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
             }
         }
     </script>
 </body>
 </html>
-
-
-
-
-
