@@ -57,25 +57,31 @@
 
         function loadAppointments() {
             const stored = localStorage.getItem(STORAGE_KEY);
+            let storedMap = new Map();
             if (stored) {
                 try {
-                    obVisitDates = new Map(JSON.parse(stored));
+                    storedMap = new Map(JSON.parse(stored));
                 } catch (e) {
                     console.error('Failed to parse appointments', e);
-                    obVisitDates = new Map();
                 }
-            } else {
-                // Initialize with default data if empty
-                 const defaults = [
-                    ['2026-01-16', '大排畸'],
-                    ['2026-02-02', 'OB'],
-                    ['2026-03-02', '糖耐?'],
-                    ['2026-03-30', 'OB'],
-                    ['2026-04-21', 'OB']
-                ].map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label]);
-                obVisitDates = new Map(defaults);
-                saveAppointments();
             }
+
+            // Default appointments — merged with stored so new defaults always show up
+            const defaults = [
+                ['2026-01-16', '大排畸'],
+                ['2026-02-02', 'OB'],
+                ['2026-03-02', '糖耐?'],
+                ['2026-03-30', 'OB'],
+                ['2026-04-21', 'OB'],
+                ['2026-05-13', 'OB'],
+                ['2026-05-19', 'OB'],
+                ['2026-05-26', 'OB'],
+                ['2026-06-02', 'OB']
+            ].map(([d, label]) => [new Date(d + 'T00:00:00').getTime(), label]);
+
+            // Merge: stored values win over defaults, but defaults fill in missing keys
+            obVisitDates = new Map([...defaults, ...storedMap]);
+            saveAppointments();
         }
 
         function saveAppointments() {
